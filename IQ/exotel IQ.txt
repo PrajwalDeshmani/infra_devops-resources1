@@ -1,0 +1,1200 @@
+Below is a **comprehensive interview prep guide** based on the **Exotel Infrastructure Engineer / Senior DevOps role** you shared. It covers major tools/technologies in the **JD** and includes **practical, theoretical, and scenario-based questions** with **short explained answers** — tailored for an experienced hire.
+Some questions are inspired by *actual interview experiences* shared online for related roles (e.g., DevOps at Exotel) and common infrastructure engineer interview question banks. ([Glassdoor][1])
+
+---
+
+## 🧠 1) Distributed Systems & Networking
+
+**1. What is the CAP theorem and how does it apply to distributed systems?**
+**Answer:** CAP stands for *Consistency, Availability, Partition tolerance*. In presence of network partitions, a distributed system must choose between consistency and availability. For example, during partition in a database cluster, choosing consistency means rejecting some reads/writes to ensure all nodes agree. Useful when designing systems like distributed queues or service registries.
+
+**2. How do you design a fault-tolerant distributed queue?**
+**Answer:** Use replication and persistence (e.g., Kafka, RabbitMQ with mirrored queues). Ensure producers/consumers handle idempotency. Use acknowledgments and retries. Use quorum where applicable to tolerate node failures.
+
+**3. Explain TCP vs UDP and when you’d choose which.**
+**Answer:** TCP is connection-oriented with reliability and ordering. UDP is connectionless, faster, no guarantee of delivery. Use TCP for APIs and reliable services; UDP for streaming or high-speed telemetry where occasional loss is acceptable.
+
+**4. How does DNS based service discovery work?**
+**Answer:** Services register with DNS names and clients resolve them to IPs. DNS TTL affects freshness; combine with health checks and client-side caching to avoid stale resolutions.
+
+**5. Scenario:** Clients complain of intermittent 500 errors between services. What’s your approach?
+**Answer:** Check load balancer logs, service logs, and inter-service latencies. Validate DNS resolution correctness and service discovery TTLs. Use distributed tracing (Jaeger, Zipkin) to pinpoint where latency spikes or timeouts occur.
+
+---
+
+## ☁️ 2) Cloud Platforms (AWS / GCP / Azure)
+
+**1. How would you design a highly available API platform in AWS?**
+**Answer:** Use multi-AZ load balanced EC2 or EKS clusters behind ALB, auto-scaling groups, RDS Multi-AZ or Aurora, S3 for static assets, Route53 health checks, CloudFront for global latency reduction.
+
+**2. Explain IAM roles vs policies and least-privilege.**
+**Answer:** IAM policies define permissions; roles are assignable containers of policies. Always grant only necessary permissions (least-privilege) to reduce blast radius.
+
+**3. What are AWS VPC Flow Logs and how do you use them?**
+**Answer:** They capture IP traffic metadata to/from network interfaces. Useful for troubleshooting connectivity, auditing, and security monitoring.
+
+**4. Scenario:** A service’s outbound traffic suddenly spikes and costs escalate. What do you check?
+**Answer:** Inspect CloudWatch metrics, VPC Flow Logs, backend logs, auto-scaling behavior, and any configuration drift (scripts/CI pipelines). Identify unnecessary retries or misconfigurations.
+
+**5. How can you secure cloud resources from public access?**
+**Answer:** Use private subnets, NAT gateways, security groups, NACLs, IAM policies, encryption at rest/in transit, WAF/IP whitelisting.
+
+---
+
+## 🐧 3) Linux & Shell Fundamentals
+
+**1. How do you find CPU, memory and disk bottlenecks?**
+**Answer:** Use `top/htop`, `free -m`, `vmstat`, `iostat`, `df -h`, `du`, `dmesg`. Correlate with application logs to identify patterns. ([LinkedIn][2])
+
+**2. Compare `grep`, `awk`, and `sed`.**
+**Answer:** `grep` filters text, `awk` parses and formats fields, `sed` stream edits. Useful in logs and pipelines.
+
+**3. How do you monitor open file descriptors and processes?**
+**Answer:** `lsof`, `ulimit -n`, `ps -ef`, `procfs` (`/proc/*`). Monitor too many open FDs indicating leaks.
+
+**4. Scenario:** A server slows down — how do you triage in Linux?
+**Answer:** Check CPU/IO wait, memory usage, swap activity, load averages, highest resource processes, disk errors, network saturation.
+
+**5. How do you automate binary deployment on hundreds of servers?**
+**Answer:** Use Ansible or SaltStack with playbooks that install and configure binaries, manage service restarts, and validate state.
+
+---
+
+## 🧰 4) Containers & Kubernetes
+
+**1. What is a Kubernetes Deployment? When would you use a StatefulSet instead?**
+**Answer:** Deployment manages stateless replicas; StatefulSet ensures ordered, unique identity for stateful pods (e.g., databases). ([ashokit.in][3])
+
+**2. What are liveness and readiness probes?**
+**Answer:** Liveness checks if container should be restarted; readiness checks if it’s ready to serve traffic.
+
+**3. Explain RBAC basics in Kubernetes.**
+**Answer:** Role/ClusterRole define permissions; RoleBinding/ClusterRoleBinding grant roles to users/groups.
+
+**4. Scenario:** A service is crash-looping after deploy. What do you check?
+**Answer:** `kubectl describe`, container logs, probe configs, resource limits, mount points, config maps/secrets.
+
+**5. How do you scale a Kubernetes application automatically?**
+**Answer:** Use Horizontal Pod Autoscaler based on metrics (CPU/memory), combined with Cluster Autoscaler for node scale. ([ashokit.in][3])
+
+---
+
+## 🛠️ 5) Infrastructure as Code (Ansible, Terraform, CloudFormation)
+
+**1. What’s the difference between Terraform and CloudFormation?**
+**Answer:** Terraform is cloud-agnostic with HCL; CloudFormation is AWS-native YAML/JSON. Terraform supports multiple providers and state file locking. ([meetassist.io][4])
+
+**2. How do you organize Terraform code for multiple environments?**
+**Answer:** Use workspaces or separate state files, modules, variables, and remote state with locking (e.g., S3 + DynamoDB).
+
+**3. What are Terraform modules?**
+**Answer:** Reusable configuration units to abstract and encapsulate resources.
+
+**4. Scenario:** Your Terraform plan shows unintended destroy actions. What do you do?
+**Answer:** Review drift, state, and code changes. Use `terraform state` to inspect; avoid auto-destroy via lifecycle blocks. Backup state before apply.
+
+**5. How do you ensure Ansible tasks are idempotent?**
+**Answer:** Use modules that check state, use `--check`, handlers, and avoid unnecessary changes.
+
+---
+
+## 📦 6) CI/CD & Deployment Automation
+
+**1. Explain a typical CI/CD pipeline you built.**
+**Answer:** Checkout code → compile/test → build container → push to registry → deploy to staging → automated tests → deploy to production via RBAC/approval.
+
+**2. How do you reduce deployment failures?**
+**Answer:** Use canary/blue-green deploys, automated smoke tests, rollback logic.
+
+**3. Scenario:** A deployment fails mid-way leaving half the fleet updated. What’s your rollback plan?
+**Answer:** Use deployment strategies with rollback history in Kubernetes or versioned artifacts; automate revert via pipeline.
+
+**4. How do you secure CI/CD pipelines?**
+**Answer:** Secrets in vault/KMS, code signing, audit logs, RBAC.
+
+**5. Compare Jenkins vs GitHub Actions vs GitLab CI.**
+**Answer:** Jenkins is extensible self-hosted; GitHub Actions integrates with GitHub; GitLab CI is integrated with GitLab with runner autoscaling.
+
+---
+
+## 📈 7) Monitoring, Logging & Security
+
+**1. What are the “four golden signals” of monitoring?**
+**Answer:** Latency, traffic, errors, saturation. ([meetassist.io][5])
+
+**2. How do you implement centralized logging?**
+**Answer:** Use Fluentd/Logstash to forward logs into ElasticSearch or Loki; correlate with metrics dashboards.
+
+**3. Explain Prometheus alerting circuit.**
+**Answer:** Prometheus scrapes metrics → Alertmanager sends alerts based on rules → integrates with Slack/PagerDuty.
+
+**4. Scenario:** You notice increasing error rates but normal CPU/memory. What might be wrong?
+**Answer:** Network latency, upstream dependency failures, clustered storage issues, broken endpoints identified via tracing.
+
+**5. How do you secure an API platform?**
+**Answer:** API gateways, JWT/OAuth, WAF, secure certificates, TLS, DDoS protection.
+
+---
+
+## 💻 8) Coding & Scripting
+
+**1. Write a shell script to scan open ports on a host.**
+**Answer:**
+
+```bash
+for port in {1..1024}; do
+  nc -z -w1 $1 $port && echo "Open: $port"
+done
+```
+
+**2. Python: parse logs and count error frequency.**
+**Answer:**
+
+```python
+from collections import Counter
+with open("app.log") as f:
+    errors = Counter(line for line in f if "ERROR" in line)
+print(errors.most_common(5))
+```
+
+**3. Scenario:** A Python script timed out on large data. What fix?
+**Answer:** Use streaming (`with open`) and generators instead of reading entire file; use multiprocessing.
+
+**4. Why might Go be preferred for infra tools?**
+**Answer:** Fast, statically compiled, concurrency built-in.
+
+**5. Explain concept of idempotent functions.**
+**Answer:** Repeated calls yield same result; crucial for safe retries in infra scripts.
+
+---
+
+## 🧭 9) Design & Scenario
+
+**1. Design distributed tracing for microservices.**
+**Answer:** Use OpenTelemetry → exporters → traces in viz tool like Jaeger; attach spans for each service call.
+
+**2. How to design alerting with noise reduction?**
+**Answer:** Severity tiers, adaptive thresholds, silence windows, consolidation rules. ([meetassist.io][5])
+
+**3. How to conduct disaster recovery (DR) planning?**
+**Answer:** Define RTO/RPO, backups, cross-region replication, automated failover tests.
+
+**4. Scaling: handling 10× traffic surge.**
+**Answer:** Autoscaling at infra and app layer, caching (Redis/CDN), connection pooling.
+
+**5. Security in multi-tenant infra.**
+**Answer:** Network isolation (VPCs), IAM segregation, quotas, auditing.
+
+---
+
+## 📊 10) Soft Skills & Behavioral
+
+**1. Tell us about a production outage you handled. What did you learn?**
+**Answer:** STAR format focusing on issue, investigation, communication, resolution, and preventive measures.
+
+**2. How do you prioritize technical debt vs new features?**
+**Answer:** Based on risk, SLA impact, team capacity.
+
+**3. How do you document infra changes?**
+**Answer:** Use versioned docs, diagrams, RFC process, PR reviews.
+
+**4. How do you deal with on-call fatigue?**
+**Answer:** Automated runbooks, alert tuning, on-call rotations.
+
+**5. Why Exotel and this role?**
+**Answer:** Focus on scalable cloud comms, mission alignment, learning new technologies, and impact.
+
+---
+
+Below is the **expanded version** of the interview guide with **proper explanations (4–6 lines each answer)** tailored to the **Exotel Infrastructure Engineer role**.
+
+---
+
+# 🧠 1) Distributed Systems & Networking (15 Questions + Explained Answers)
+
+### 1. Explain CAP theorem with real-world example.
+
+CAP theorem states that a distributed system can guarantee only two out of three: Consistency, Availability, and Partition Tolerance. During a network partition, the system must choose between serving stale data (availability) or rejecting requests (consistency). For example, in a distributed database like Cassandra, the system may choose availability over strict consistency. In financial systems, consistency is usually preferred.
+
+### 2. What is eventual consistency?
+
+Eventual consistency means that all nodes in a distributed system will eventually converge to the same value if no new updates occur. It allows temporary inconsistency for better availability and performance. This model is common in NoSQL systems like DynamoDB. It works well where immediate consistency is not critical, such as social media feeds.
+
+### 3. What is split-brain problem?
+
+Split-brain happens when nodes in a cluster lose communication and both assume leadership. This causes data corruption or conflicting writes. It commonly occurs during network partitions. Quorum-based voting or consensus algorithms like Raft prevent this by ensuring only majority nodes can make decisions.
+
+### 4. Explain Raft vs Paxos.
+
+Both are consensus algorithms used for distributed coordination. Paxos is mathematically complex and harder to implement. Raft simplifies the process using leader election and log replication in an understandable way. Many modern systems like etcd use Raft because of its clarity and reliability.
+
+### 5. What is backpressure?
+
+Backpressure is a mechanism to control data flow when consumers cannot keep up with producers. It prevents system overload and memory exhaustion. For example, Kafka slows producers if consumers lag significantly. TCP also uses flow control to manage backpressure.
+
+### 6. L4 vs L7 load balancing?
+
+Layer 4 load balancing operates at the transport layer using IP and port. It is faster and simpler. Layer 7 operates at application layer, routing based on URL, headers, or cookies. L7 enables smarter routing like path-based traffic splitting.
+
+### 7. Explain DNS-based service discovery.
+
+Services register DNS names that clients resolve into IP addresses. DNS caching and TTL impact how quickly updates propagate. It is simple but less dynamic compared to service mesh solutions. Failures are handled via health checks and TTL expiry.
+
+### 8. What is a circuit breaker?
+
+A circuit breaker prevents repeated calls to a failing service. After detecting failures, it opens the circuit and blocks calls temporarily. Once healthy, it allows limited test traffic. This prevents cascading failures across microservices.
+
+### 9. How to debug intermittent latency spikes?
+
+Start by checking network metrics and service logs. Use distributed tracing to see slow service hops. Inspect thread pools, GC pauses, and retry storms. Identify whether latency is internal or from upstream dependency.
+
+### 10. What is idempotency in APIs?
+
+An idempotent operation produces the same result when executed multiple times. For example, PUT requests are idempotent. It is important in distributed systems to safely retry failed requests. Payment systems often use idempotency keys.
+
+### 11. What are distributed locks?
+
+Distributed locks coordinate access across nodes. They ensure only one node performs a critical operation. Tools like Redis Redlock or Zookeeper are commonly used. Improper implementation may lead to deadlocks.
+
+### 12. What is gossip protocol?
+
+Gossip protocol spreads information randomly among nodes. It ensures cluster state propagation in scalable systems. Used in Cassandra and Consul. It is fault tolerant and decentralized.
+
+### 13. What is thundering herd problem?
+
+It occurs when many clients retry simultaneously after a failure. This overwhelms the system again. Exponential backoff with jitter helps prevent it. Circuit breakers also reduce impact.
+
+### 14. Explain TCP three-way handshake.
+
+TCP establishes connection using SYN → SYN-ACK → ACK. This ensures both sides agree on communication. It initializes sequence numbers and ensures reliability before data transfer.
+
+### 15. How to design highly available distributed queue?
+
+Use replication across nodes with leader election. Persist messages to disk for durability. Use acknowledgments to ensure safe processing. Implement partitioning for scalability.
+
+---
+
+# ☁️ 2) Cloud Platforms (15 Questions)
+
+### 1. Design highly available AWS architecture.
+
+Use multi-AZ EC2 or EKS behind an ALB. Enable Auto Scaling Groups. Store data in RDS Multi-AZ or Aurora. Use Route53 for DNS failover.
+
+### 2. Security Groups vs NACLs?
+
+Security Groups are stateful firewalls at instance level. NACLs are stateless and operate at subnet level. SG automatically allows return traffic. NACL requires explicit rules.
+
+### 3. What is VPC peering?
+
+VPC peering allows private network communication between VPCs. It uses private IP addresses. It does not support transitive routing.
+
+### 4. IAM roles vs policies?
+
+Policies define permissions in JSON format. Roles attach policies and are assumed by users/services. Roles are temporary and secure.
+
+### 5. Lifecycle hooks?
+
+They allow custom scripts during instance launch or termination. Useful for config management or graceful shutdown.
+
+### 6. Monitor cloud costs?
+
+Use cost explorer and tagging. Analyze idle resources. Use budget alerts.
+
+### 7. Shared responsibility model?
+
+Cloud provider secures infrastructure. Customer secures OS, apps, and data.
+
+### 8. AZ latency issue troubleshooting?
+
+Check load balancer distribution. Verify instance health. Compare metrics across AZs.
+
+### 9. NAT Gateway purpose?
+
+Provides outbound internet for private subnets. Blocks inbound connections.
+
+### 10. EBS vs EFS?
+
+EBS is block storage for single instance. EFS is network file system for multiple instances.
+
+### 11. CloudWatch metric vs log?
+
+Metrics are numeric performance indicators. Logs are detailed event records.
+
+### 12. Blue-green deployment?
+
+Two environments exist. Switch traffic after validation. Enables quick rollback.
+
+### 13. Serverless benefits?
+
+Auto scaling and reduced operational overhead. Pay only for execution time.
+
+### 14. Secure S3?
+
+Enable encryption, block public access, use IAM policies.
+
+### 15. What is WAF?
+
+Web Application Firewall filters malicious HTTP traffic.
+
+---
+
+Continuing with the remaining sections with **4–6 line detailed answers** tailored for an experienced **Infrastructure Engineer (Exotel-level expectations).**
+
+---
+
+# 🐧 3) Linux & OS Fundamentals (15 Questions + Explained Answers)
+
+### 1. What happens when you execute a command in Linux?
+
+When you execute a command, the shell parses it and creates a new process using `fork()`. The new process replaces itself with the target program using `exec()`. The kernel scheduler assigns CPU time. The process runs in user mode but may switch to kernel mode for system calls. After completion, it returns an exit status.
+
+### 2. Explain load average.
+
+Load average represents the number of processes waiting for CPU or I/O over 1, 5, and 15 minutes. A load equal to CPU cores means full utilization. Higher values indicate CPU contention. It includes both running and runnable processes.
+
+### 3. Soft link vs Hard link?
+
+A hard link points directly to the inode of a file, meaning both filenames share the same data. A soft link (symbolic link) is a pointer to the file path. Deleting the original file breaks a soft link but not a hard link. Hard links cannot span filesystems.
+
+### 4. What is a zombie process?
+
+A zombie process has completed execution but still has an entry in the process table. It occurs when the parent does not call `wait()`. Zombies consume minimal resources but may indicate improper process handling.
+
+### 5. How do you debug high I/O wait?
+
+Use `iostat`, `vmstat`, and `iotop` to identify disk bottlenecks. Check if swap usage is high. Look for processes performing heavy read/write operations. Disk saturation or slow storage often causes high I/O wait.
+
+### 6. What are cgroups?
+
+Control groups (cgroups) limit CPU, memory, and I/O usage of processes. Containers rely on cgroups for isolation. They prevent a single process from exhausting system resources.
+
+### 7. What is systemd?
+
+Systemd is the init system that manages services and boot processes. It handles dependency management and parallel startup. Services are controlled using `systemctl`.
+
+### 8. How to check open ports?
+
+Use `ss -lntp` or `netstat -tulnp` to list listening ports and associated processes. This helps diagnose unexpected services running.
+
+### 9. Impact of swap usage?
+
+Swap moves memory pages to disk when RAM is full. Heavy swapping degrades performance significantly. It indicates memory pressure.
+
+### 10. How to detect memory leak?
+
+Monitor process RSS growth using `top` or `ps`. Check heap usage using profilers. Gradual increase without release indicates leak.
+
+### 11. What is strace?
+
+Strace traces system calls made by a process. It helps debug permission issues, file access errors, and unexpected behavior.
+
+### 12. What are file descriptors?
+
+File descriptors are handles for open files, sockets, and pipes. Each process has limits (`ulimit -n`). Exhausting them causes “too many open files” errors.
+
+### 13. How to secure SSH?
+
+Disable root login, enforce key-based authentication, change default port, and use fail2ban to prevent brute force.
+
+### 14. How does cron work?
+
+Cron is a time-based scheduler that executes tasks defined in crontab. It runs as a daemon checking schedule entries every minute.
+
+### 15. Server CPU at 100% – steps?
+
+Identify top process using `top`. Check threads and logs. Determine if issue is compute-heavy or stuck loop. Restart only if root cause understood.
+
+---
+
+# 🐳 4) Containers & Kubernetes (15 Questions)
+
+### 1. What is container runtime?
+
+It is the engine responsible for running containers (e.g., containerd). It handles image pulling, execution, and lifecycle management.
+
+### 2. Pod vs Deployment?
+
+Pod is the smallest unit containing containers. Deployment manages replica sets and ensures desired state.
+
+### 3. ConfigMap vs Secret?
+
+ConfigMap stores non-sensitive config data. Secrets store sensitive info (encoded). Secrets should be mounted securely.
+
+### 4. NodePort vs ClusterIP vs LoadBalancer?
+
+ClusterIP exposes internally. NodePort exposes on node IP. LoadBalancer provisions external LB.
+
+### 5. What is HPA?
+
+Horizontal Pod Autoscaler scales pods based on metrics like CPU usage.
+
+### 6. Taints and tolerations?
+
+Taints restrict pods from scheduling on nodes. Tolerations allow specific pods to bypass restrictions.
+
+### 7. What is etcd?
+
+Etcd is the distributed key-value store holding cluster state.
+
+### 8. CrashLoopBackOff causes?
+
+Application crash, wrong config, failing liveness probe, or resource limits exceeded.
+
+### 9. Requests vs Limits?
+
+Requests define minimum guaranteed resources. Limits cap maximum usage.
+
+### 10. Rolling updates?
+
+Gradually replace old pods with new ones while maintaining availability.
+
+### 11. Ingress controller?
+
+Manages HTTP routing rules and SSL termination.
+
+### 12. What is Helm?
+
+Helm packages Kubernetes apps using charts.
+
+### 13. Secure cluster?
+
+Enable RBAC, network policies, pod security standards, restrict API access.
+
+### 14. Pods stuck Pending?
+
+Insufficient resources, PVC unbound, or taint mismatch.
+
+### 15. Zero downtime deploy?
+
+Use rolling update with readiness probes ensuring traffic only to healthy pods.
+
+---
+
+# 🧰 5) Infrastructure as Code (15 Questions)
+
+### 1. What is idempotency?
+
+Running same config repeatedly results in same infra state.
+
+### 2. Terraform state?
+
+Tracks resource mapping between config and real infra.
+
+### 3. Remote backend?
+
+Stores state centrally with locking to prevent conflicts.
+
+### 4. What is drift?
+
+Manual changes outside IaC causing mismatch.
+
+### 5. Lifecycle rules?
+
+Control resource behavior like prevent_destroy.
+
+### 6. Ansible push vs pull?
+
+Push initiated from controller; pull initiated from node.
+
+### 7. Terraform modules?
+
+Reusable code blocks to standardize infra.
+
+### 8. Terraform plan?
+
+Shows preview before apply.
+
+### 9. State corrupted?
+
+Restore backup or use remote state recovery.
+
+### 10. Dynamic blocks?
+
+Generate repeated nested blocks programmatically.
+
+### 11. Provisioner drawback?
+
+Imperative; breaks declarative model.
+
+### 12. Secret management?
+
+Use Vault, KMS, or encrypted variables.
+
+### 13. Immutable infra?
+
+Replace servers instead of modifying.
+
+### 14. Ansible inventory?
+
+Defines hosts and grouping.
+
+### 15. CI with IaC?
+
+Run plan in PR; apply after approval.
+
+---
+
+# 📈 6) Monitoring & Reliability (15 Questions)
+
+### 1. SLI, SLO, SLA?
+
+SLI measures performance. SLO is target. SLA is contractual commitment.
+
+### 2. RED method?
+
+Rate, Errors, Duration for microservices.
+
+### 3. USE method?
+
+Utilization, Saturation, Errors for resources.
+
+### 4. Log aggregation?
+
+Centralize logs for analysis.
+
+### 5. Prometheus pull model?
+
+Prometheus scrapes metrics from endpoints.
+
+### 6. Alert fatigue?
+
+Too many alerts reduce response efficiency.
+
+### 7. Noise reduction?
+
+Tune thresholds and group alerts.
+
+### 8. Distributed tracing?
+
+Track request across services.
+
+### 9. 5xx spike?
+
+Check dependency failures or overload.
+
+### 10. RTO vs RPO?
+
+Time to recover vs acceptable data loss.
+
+### 11. Chaos engineering?
+
+Test system resilience intentionally.
+
+### 12. Health check endpoint?
+
+Indicates service status.
+
+### 13. Monitor K8s?
+
+Use Prometheus and Grafana dashboards.
+
+### 14. Memory leak detection?
+
+Heap analysis and long-term metrics.
+
+### 15. Postmortem process?
+
+Identify root cause and preventive actions.
+
+---
+
+# 💻 7) Coding & Automation (15 Questions)
+
+### 1. Disk usage alert script?
+
+Monitor `df -h`, trigger alert if threshold exceeded.
+
+### 2. Python API health check?
+
+Use requests library with retries.
+
+### 3. Multithreading vs multiprocessing?
+
+Threads share memory; processes isolated.
+
+### 4. Why Go?
+
+Fast, concurrency support, static binary.
+
+### 5. Exception handling?
+
+Use try/except to manage runtime errors.
+
+### 6. Log parser logic?
+
+Read line, match pattern, increment counter.
+
+### 7. Race condition?
+
+Concurrent access causing unpredictable outcome.
+
+### 8. Mutex?
+
+Lock to ensure mutual exclusion.
+
+### 9. Schedule automation?
+
+Use cron jobs.
+
+### 10. Optimize script?
+
+Profile and parallelize.
+
+### 11. REST?
+
+Stateless HTTP architecture.
+
+### 12. Secure API?
+
+Use HTTPS and token-based auth.
+
+### 13. JSON parsing?
+
+Convert JSON to objects.
+
+### 14. Script fails in prod?
+
+Check environment and permissions.
+
+### 15. Test automation code?
+
+Write unit tests and mocks.
+
+---
+
+# 🎯 8) System Design & Scaling (15 Questions)
+
+### 1. Design scalable logging?
+
+Agents → queue → storage → dashboard.
+
+### 2. Service discovery?
+
+Registry with health checks.
+
+### 3. 10x traffic handling?
+
+Autoscaling and caching.
+
+### 4. Rate limiting?
+
+Limit per client request rate.
+
+### 5. Sharding?
+
+Split DB horizontally.
+
+### 6. Caching strategy?
+
+Read-through or write-through.
+
+### 7. Avoid SPOF?
+
+Add redundancy.
+
+### 8. Blue-green vs canary?
+
+Canary gradually shifts traffic.
+
+### 9. Scale database?
+
+Read replicas and partitioning.
+
+### 10. Event-driven architecture?
+
+Async communication via events.
+
+### 11. Secure microservices?
+
+Use mTLS and auth tokens.
+
+### 12. Service mesh?
+
+Sidecars managing traffic.
+
+### 13. Reduce latency?
+
+Co-locate services and cache.
+
+### 14. DR design?
+
+Cross-region backups.
+
+### 15. CQRS?
+
+Separate read and write models.
+
+---
+
+Below are **practical coding questions with complete working answers** tailored for an **Infrastructure / Platform Engineer (Exotel-level)** role.
+
+Focus areas:
+
+* Automation
+* Reliability engineering
+* Distributed systems thinking
+* Cloud-native scripting
+* Production-safe coding
+
+---
+
+# 💻 SECTION 1: Shell Scripting Practical Questions (With Answers)
+
+---
+
+## 1️⃣ Disk Usage Alert Script
+
+### ✅ Problem
+
+Write a script that alerts if disk usage exceeds 80%.
+
+### 💡 Answer
+
+```bash
+#!/bin/bash
+
+THRESHOLD=80
+
+df -h | awk 'NR>1 {print $5 " " $1}' | while read output;
+do
+  usage=$(echo $output | awk '{print $1}' | sed 's/%//g')
+  partition=$(echo $output | awk '{print $2}')
+
+  if [ $usage -ge $THRESHOLD ]; then
+    echo "ALERT: $partition usage is at ${usage}%"
+  fi
+done
+```
+
+✔ Parses `df -h`
+✔ Removes `%`
+✔ Compares threshold
+✔ Production-ready logic
+
+---
+
+## 2️⃣ Top 5 Memory Consuming Processes
+
+### ✅ Problem
+
+List top 5 processes by memory usage.
+
+### 💡 Answer
+
+```bash
+#!/bin/bash
+
+ps aux --sort=-%mem | head -6
+```
+
+✔ `--sort=-%mem` sorts descending
+✔ First line is header
+✔ Lightweight production command
+
+---
+
+## 3️⃣ Auto Restart Service if Down
+
+### ✅ Problem
+
+Restart nginx if not running.
+
+### 💡 Answer
+
+```bash
+#!/bin/bash
+
+SERVICE="nginx"
+
+if ! systemctl is-active --quiet $SERVICE
+then
+  echo "$SERVICE is down. Restarting..."
+  systemctl restart $SERVICE
+else
+  echo "$SERVICE is running fine."
+fi
+```
+
+✔ Uses systemctl check
+✔ Prevents unnecessary restarts
+
+---
+
+## 4️⃣ Check Open Ports in Range
+
+### ✅ Problem
+
+Scan ports 8000–8010
+
+### 💡 Answer
+
+```bash
+#!/bin/bash
+
+for port in {8000..8010}
+do
+  nc -z -w1 localhost $port 2>/dev/null && echo "Port $port is open"
+done
+```
+
+✔ Uses netcat
+✔ Silent error handling
+✔ Efficient scan loop
+
+---
+
+# 🐍 SECTION 2: Python Automation (With Answers)
+
+---
+
+## 5️⃣ API Health Check Monitor
+
+### ✅ Problem
+
+Call API every 10 seconds and log response.
+
+### 💡 Answer
+
+```python
+import requests
+import time
+
+url = "https://example.com/health"
+
+while True:
+    try:
+        response = requests.get(url, timeout=5)
+        print(f"Status: {response.status_code}")
+    except Exception as e:
+        print(f"Error: {e}")
+    time.sleep(10)
+```
+
+✔ Includes timeout
+✔ Handles exceptions
+✔ Infinite monitoring loop
+
+---
+
+## 6️⃣ Log Analyzer – Top 3 Errors
+
+### ✅ Problem
+
+Find top 3 most frequent ERROR messages.
+
+### 💡 Answer
+
+```python
+from collections import Counter
+
+errors = []
+
+with open("app.log") as f:
+    for line in f:
+        if "ERROR" in line:
+            errors.append(line.strip())
+
+counter = Counter(errors)
+
+for error, count in counter.most_common(3):
+    print(error, count)
+```
+
+✔ Efficient frequency counting
+✔ Works for large logs
+
+---
+
+## 7️⃣ Retry with Exponential Backoff
+
+### ✅ Problem
+
+Retry API up to 5 times with exponential delay.
+
+### 💡 Answer
+
+```python
+import requests
+import time
+
+url = "https://example.com"
+
+for attempt in range(5):
+    try:
+        response = requests.get(url, timeout=5)
+        if response.status_code == 200:
+            print("Success")
+            break
+    except:
+        pass
+
+    sleep_time = 2 ** attempt
+    print(f"Retrying in {sleep_time} seconds...")
+    time.sleep(sleep_time)
+```
+
+✔ Implements resilience
+✔ Prevents thundering herd
+
+---
+
+## 8️⃣ Simple Round Robin Load Balancer
+
+### ✅ Problem
+
+Return next backend server each call.
+
+### 💡 Answer
+
+```python
+class LoadBalancer:
+    def __init__(self, servers):
+        self.servers = servers
+        self.index = 0
+
+    def get_server(self):
+        server = self.servers[self.index]
+        self.index = (self.index + 1) % len(self.servers)
+        return server
+
+lb = LoadBalancer(["10.0.0.1", "10.0.0.2", "10.0.0.3"])
+
+print(lb.get_server())
+print(lb.get_server())
+```
+
+✔ Cyclic index
+✔ Production logic ready
+
+---
+
+## 9️⃣ Token Bucket Rate Limiter
+
+### ✅ Problem
+
+Implement simple rate limiter.
+
+### 💡 Answer
+
+```python
+import time
+
+class TokenBucket:
+    def __init__(self, rate, capacity):
+        self.rate = rate
+        self.capacity = capacity
+        self.tokens = capacity
+        self.last_refill = time.time()
+
+    def allow_request(self):
+        now = time.time()
+        elapsed = now - self.last_refill
+        self.tokens = min(self.capacity, self.tokens + elapsed * self.rate)
+        self.last_refill = now
+
+        if self.tokens >= 1:
+            self.tokens -= 1
+            return True
+        return False
+
+bucket = TokenBucket(rate=1, capacity=5)
+print(bucket.allow_request())
+```
+
+✔ Used in API gateways
+✔ Implements refill logic
+
+---
+
+## 🔟 Circuit Breaker Implementation
+
+### ✅ Problem
+
+Stop calling service after 3 failures.
+
+### 💡 Answer
+
+```python
+class CircuitBreaker:
+    def __init__(self, failure_threshold):
+        self.failure_threshold = failure_threshold
+        self.failure_count = 0
+        self.state = "CLOSED"
+
+    def call(self, func):
+        if self.state == "OPEN":
+            print("Circuit Open")
+            return
+
+        try:
+            func()
+            self.failure_count = 0
+        except:
+            self.failure_count += 1
+            if self.failure_count >= self.failure_threshold:
+                self.state = "OPEN"
+
+def test():
+    raise Exception("Fail")
+
+cb = CircuitBreaker(3)
+for _ in range(5):
+    cb.call(test)
+```
+
+✔ Implements failure tracking
+✔ Basic resilience pattern
+
+---
+
+# ☁️ SECTION 3: Infrastructure-Oriented Coding
+
+---
+
+## 1️⃣1️⃣ Terraform Reusable Module
+
+### main.tf
+
+```hcl
+variable "instance_type" {}
+variable "ami_id" {}
+
+resource "aws_instance" "example" {
+  ami           = var.ami_id
+  instance_type = var.instance_type
+}
+
+output "public_ip" {
+  value = aws_instance.example.public_ip
+}
+```
+
+✔ Uses variables
+✔ Exposes output
+✔ Modular structure
+
+---
+
+## 1️⃣2️⃣ Kubernetes YAML Generator (Python)
+
+```python
+import yaml
+
+deployment = {
+    "apiVersion": "apps/v1",
+    "kind": "Deployment",
+    "metadata": {"name": "my-app"},
+    "spec": {
+        "replicas": 2,
+        "selector": {"matchLabels": {"app": "my-app"}},
+        "template": {
+            "metadata": {"labels": {"app": "my-app"}},
+            "spec": {
+                "containers": [{
+                    "name": "my-app",
+                    "image": "nginx"
+                }]
+            }
+        }
+    }
+}
+
+print(yaml.dump(deployment))
+```
+
+✔ Infra automation
+✔ YAML generation
+
+---
+
+# 🔥 Advanced Production-Oriented Coding
+
+---
+
+## 1️⃣3️⃣ Detect Config Drift
+
+```python
+import json
+
+with open("expected.json") as f:
+    expected = json.load(f)
+
+with open("current.json") as f:
+    current = json.load(f)
+
+for key in expected:
+    if expected[key] != current.get(key):
+        print(f"Drift detected in {key}")
+```
+
+✔ Drift detection logic
+✔ Real infra use case
+
+---
+
+## 1️⃣4️⃣ Parallel URL Checker
+
+```python
+import requests
+from concurrent.futures import ThreadPoolExecutor
+
+urls = ["https://google.com", "https://example.com"]
+
+def check(url):
+    try:
+        r = requests.get(url, timeout=3)
+        return (url, r.status_code)
+    except:
+        return (url, "DOWN")
+
+with ThreadPoolExecutor(max_workers=5) as executor:
+    results = executor.map(check, urls)
+
+for result in results:
+    print(result)
+```
+
+✔ Parallel execution
+✔ Timeout handling
+
+---
+
+## 1️⃣5️⃣ Auto-Scaling Decision Logic
+
+```python
+def scale_decision(cpu_metrics):
+    avg = sum(cpu_metrics) / len(cpu_metrics)
+
+    if avg > 75:
+        return "Scale Up"
+    elif avg < 30:
+        return "Scale Down"
+    else:
+        return "No Action"
+
+print(scale_decision([80, 85, 78]))
+```
+
+✔ Decision logic
+✔ Production-like thinking
+
+---
+
+# 🎯 What Interviewers Evaluate in These Coding Rounds
+
+They look for:
+
+* Clean error handling
+* Timeouts and retries
+* Concurrency understanding
+* Resource efficiency
+* Observability thinking
+* Defensive coding
+* Idempotency
+
+---
+
+
+
+
+

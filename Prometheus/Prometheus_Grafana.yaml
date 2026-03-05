@@ -1,0 +1,529 @@
+Absolutely! Below are **15 practical interview tasks related to Prometheus and Grafana**, with detailed implementation scripts for each task. These tasks focus on deploying Prometheus and Grafana on Kubernetes, configuring alerts, scraping metrics, and integrating both tools for observability.
+
+---
+
+### **1. Deploy Prometheus on Kubernetes**
+
+**Task**: Deploy Prometheus using Kubernetes.
+
+**prometheus-deployment.yaml**:
+```yaml
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: prometheus
+  labels:
+    app: prometheus
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      app: prometheus
+  template:
+    metadata:
+      labels:
+        app: prometheus
+    spec:
+      containers:
+        - name: prometheus
+          image: prom/prometheus:v2.30.0
+          ports:
+            - containerPort: 9090
+          volumeMounts:
+            - name: prometheus-config
+              mountPath: /etc/prometheus
+      volumes:
+        - name: prometheus-config
+          configMap:
+            name: prometheus-config
+```
+
+**prometheus-service.yaml**:
+```yaml
+apiVersion: v1
+kind: Service
+metadata:
+  name: prometheus-service
+spec:
+  selector:
+    app: prometheus
+  ports:
+    - port: 9090
+      targetPort: 9090
+```
+
+**prometheus-config.yaml** (ConfigMap):
+```yaml
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: prometheus-config
+data:
+  prometheus.yml: |
+    global:
+      scrape_interval: 15s
+
+    scrape_configs:
+      - job_name: 'prometheus'
+        static_configs:
+          - targets: ['localhost:9090']
+```
+
+**Apply the Deployment, Service, and ConfigMap**:
+```bash
+kubectl apply -f prometheus-config.yaml
+kubectl apply -f prometheus-deployment.yaml
+kubectl apply -f prometheus-service.yaml
+```
+
+---
+
+### **2. Deploy Grafana on Kubernetes**
+
+**Task**: Deploy Grafana and configure it to read data from Prometheus.
+
+**grafana-deployment.yaml**:
+```yaml
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: grafana
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      app: grafana
+  template:
+    metadata:
+      labels:
+        app: grafana
+    spec:
+      containers:
+        - name: grafana
+          image: grafana/grafana:8.4.3
+          ports:
+            - containerPort: 3000
+          env:
+            - name: GF_SECURITY_ADMIN_PASSWORD
+              value: "admin"
+```
+
+**grafana-service.yaml**:
+```yaml
+apiVersion: v1
+kind: Service
+metadata:
+  name: grafana-service
+spec:
+  selector:
+    app: grafana
+  ports:
+    - port: 3000
+      targetPort: 3000
+```
+
+**Apply the Grafana Deployment and Service**:
+```bash
+kubectl apply -f grafana-deployment.yaml
+kubectl apply -f grafana-service.yaml
+```
+
+---
+
+### **3. Configure Prometheus Data Source in Grafana**
+
+**Task**: Add Prometheus as a data source in Grafana using the Grafana UI or configuration.
+
+1. Navigate to **http://<grafana-ip>:3000** (default user: `admin`, password: `admin`).
+2. Go to **Configuration** > **Data Sources** > **Add data source**.
+3. Choose **Prometheus** and configure it:
+   - URL: `http://prometheus-service:9090`
+   - Click **Save & Test**.
+
+---
+
+### **4. Create a Basic Grafana Dashboard for Prometheus Metrics**
+
+**Task**: Create a basic Grafana dashboard that visualizes metrics from Prometheus (e.g., CPU usage).
+
+1. In the **Grafana UI**, go to **Create** > **Dashboard**.
+2. Add a **new panel** and choose **Prometheus** as the data source.
+3. Use a query like:
+   ```
+   avg(rate(container_cpu_usage_seconds_total{job="kubernetes-cadvisor"}[5m])) by (instance)
+   ```
+4. Save the dashboard.
+
+---
+
+### **5. Set Up Alerting in Prometheus**
+
+**Task**: Set up an alert for high CPU usage in Prometheus.
+
+**prometheus-alert.yaml**:
+```yaml
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: prometheus-alerts
+data:
+  alerts.yml: |
+    groups:
+      - name: example_alerts
+        rules:
+          - alert: HighCpuUsage
+            expr: avg(rate(container_cpu_usage_seconds_total{job="kubernetes-cadvisor"}[5m])) by (instance) > 0.9
+            for: 5m
+            labels:
+              severity: critical
+            annotations:
+              summary: "High CPU usage on instance {{ $labels.instance }}"
+              description: "CPU usage is above 90% for more than 5 minutes."
+```
+
+**Update Prometheus to use the alert config**:
+```yaml
+      volumeMounts:
+        - name: prometheus-config
+          mountPath: /etc/prometheus
+        - name: prometheus-alerts
+          mountPath: /etc/prometheus/alerts
+      volumes:
+        - name: prometheus-alerts
+          configMap:
+            name: prometheus-alerts
+```
+
+**Apply the ConfigMap for Alerts**:
+```bash
+kubectl apply -f prometheus-alert.yaml
+```
+
+---
+
+### **6. Set Up Alertmanager for Alert Notifications**
+
+**Task**: Deploy Alertmanager to manage Prometheus alerts.
+
+**alertmanager-deployment.yaml**:
+```yaml
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: alertmanager
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      app: alertmanager
+  template:
+    metadata:
+      labels:
+        app: alertmanager
+    spec:
+      containers:
+        - name: alertmanager
+          image: prom/alertmanager:v0.22.2
+          ports:
+            - containerPort: 9093
+          volumeMounts:
+            - name: alertmanager-config
+              mountPath: /etc/alertmanager
+      volumes:
+        - name: alertmanager-config
+          configMap:
+            name: alertmanager-config
+```
+
+**alertmanager-service.yaml**:
+```yaml
+apiVersion: v1
+kind: Service
+metadata:
+  name: alertmanager-service
+spec:
+  selector:
+    app: alertmanager
+  ports:
+    - port: 9093
+      targetPort: 9093
+```
+
+**alertmanager-config.yaml**:
+```yaml
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: alertmanager-config
+data:
+  alertmanager.yml: |
+    global:
+      resolve_timeout: 5m
+    route:
+      group_by: ['alertname']
+      group_wait: 10s
+      group_interval: 5m
+      repeat_interval: 3h
+      receiver: 'email-alerts'
+    receivers:
+      - name: 'email-alerts'
+        email_configs:
+          - to: 'your-email@example.com'
+            from: 'alertmanager@example.com'
+            smarthost: 'smtp.example.com:587'
+            auth_username: 'alertmanager@example.com'
+            auth_password: 'your-email-password'
+```
+
+**Apply the Alertmanager Resources**:
+```bash
+kubectl apply -f alertmanager-config.yaml
+kubectl apply -f alertmanager-deployment.yaml
+kubectl apply -f alertmanager-service.yaml
+```
+
+---
+
+### **7. Configure Prometheus to Send Alerts to Alertmanager**
+
+**Task**: Configure Prometheus to forward alerts to Alertmanager.
+
+**prometheus.yml** (update config):
+```yaml
+alerting:
+  alertmanagers:
+    - static_configs:
+        - targets:
+          - 'alertmanager-service:9093'
+```
+
+**Apply the Prometheus Config**:
+```bash
+kubectl apply -f prometheus-deployment.yaml
+```
+
+---
+
+### **8. Monitor Kubernetes Cluster Metrics with Prometheus**
+
+**Task**: Use Prometheus to scrape Kubernetes metrics from the kubelet and API server.
+
+**prometheus-kubernetes-config.yaml**:
+```yaml
+scrape_configs:
+  - job_name: 'kubernetes-nodes'
+    kubernetes_sd_configs:
+      - role: node
+    metrics_path: /metrics/cadvisor
+    relabel_configs:
+      - source_labels: [__address__]
+        target_label: instance
+  - job_name: 'kubernetes-pods'
+    kubernetes_sd_configs:
+      - role: pod
+    metrics_path: /metrics
+    relabel_configs:
+      - source_labels: [__meta_kubernetes_pod_name]
+        target_label: pod
+```
+
+**Apply the ConfigMap**:
+```bash
+kubectl apply -f prometheus-kubernetes-config.yaml
+```
+
+---
+
+### **9. Use Prometheus to Monitor Application Metrics**
+
+**Task**: Scrape custom application metrics in Prometheus (e.g., a Go app exposing metrics).
+
+**app-metrics.yaml**:
+```yaml
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: go-metrics-app
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      app: go-metrics
+  template:
+    metadata:
+      labels:
+        app: go-metrics
+    spec:
+      containers:
+        - name: go-metrics
+          image: your-go-app-image
+          ports:
+            - containerPort: 8080
+          env:
+            - name: APP_PORT
+              value: "8080"
+```
+
+**app-service.yaml**:
+```yaml
+apiVersion: v1
+kind: Service
+metadata:
+  name: go-metrics-service
+spec:
+  selector:
+    app: go-metrics
+  ports:
+    - port: 8080
+      targetPort: 8080
+```
+
+**prometheus-config.yaml** (scraping config for Go app):
+```yaml
+scrape_configs:
+  - job_name: 'go-metrics-app'
+    static_configs:
+      - targets: ['go-metrics-service:8080']
+```
+
+---
+
+### **10. Monitor Node Exporter Metrics with Prometheus**
+
+**Task**: Deploy Prometheus Node Exporter to collect node-level metrics.
+
+**node-exporter-deployment.yaml**:
+```yaml
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: node-exporter
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      app: node-exporter
+  template:
+    metadata:
+      labels:
+        app: node-exporter
+    spec:
+      containers:
+        - name: node-exporter
+          image: prom/node-exporter:v1.3.1
+          ports:
+            - containerPort: 9100
+```
+
+**node-exporter-service.yaml**:
+```yaml
+apiVersion: v1
+kind: Service
+metadata:
+  name: node-exporter-service
+spec:
+  selector:
+    app: node-exporter
+  ports:
+    - port: 9100
+      targetPort: 9100
+```
+
+**prometheus-config.yaml** (add to scrape node exporter):
+```yaml
+scrape_configs:
+  - job_name: 'node-exporter'
+    static_configs:
+      - targets: ['node-exporter-service:9100']
+```
+
+---
+
+### **11. Set Up Custom Metrics with Prometheus Client Libraries**
+
+**Task**: Expose custom application metrics using Prometheus client libraries (e.g., for Python).
+
+**python-metrics.py**:
+```python
+from prometheus_client import start_http_server, Counter
+import random
+import time
+
+REQUESTS = Counter('myapp_requests_total', 'Total number of requests')
+
+def process_request():
+    REQUESTS.inc(random.randint(1, 5))
+    time.sleep(1)
+
+if __name__ == '__main__':
+    start_http_server(8000)
+    while True:
+        process_request()
+```
+
+**Expose metrics on port 8000** and configure Prometheus to scrape `http://python-app:8000/metrics`.
+
+---
+
+### **12. Grafana Dashboard for Node Exporter Metrics**
+
+**Task**: Create a Grafana dashboard to visualize CPU usage from Node Exporter metrics.
+
+1. In **Grafana**, go to **Create** > **Dashboard** > **Add Panel**.
+2. Use the following Prometheus query:
+   ```
+   rate(node_cpu_seconds_total{mode="idle"}[5m])
+   ```
+3. Visualize the CPU usage as a graph.
+
+---
+
+### **13. Use Grafana Alerts for Prometheus
+
+ Metrics**
+
+**Task**: Set up an alert in Grafana to notify when CPU usage exceeds 90%.
+
+1. Go to **Dashboard** > **Create Panel**.
+2. Add a **Prometheus query**:
+   ```
+   avg(rate(node_cpu_seconds_total{mode="idle"}[5m])) by (instance)
+   ```
+3. Set up an alert with the condition:
+   - **WHEN** average **is above 0.9**
+   - **For**: 5 minutes.
+4. Configure the alert notification (e.g., Slack, Email).
+
+---
+
+### **14. Configure Prometheus Federation**
+
+**Task**: Set up **Prometheus Federation** to aggregate metrics from multiple Prometheus instances.
+
+**prometheus-federation.yaml**:
+```yaml
+scrape_configs:
+  - job_name: 'federate'
+    honor_labels: true
+    metrics_path: '/federate'
+    params:
+      'match[]': ['up']
+    static_configs:
+      - targets:
+        - 'prometheus-1:9090'
+        - 'prometheus-2:9090'
+```
+
+---
+
+### **15. Grafana Dashboard for Multi-cluster Monitoring**
+
+**Task**: Create a multi-cluster monitoring dashboard by combining multiple Prometheus data sources in Grafana.
+
+1. Add multiple Prometheus data sources in Grafana for each cluster.
+2. Create a **multi-cluster dashboard** by querying both data sources.
+3. Visualize metrics across clusters.
+
+---
+
+These **15 Prometheus and Grafana interview tasks** help assess a candidate's ability to set up monitoring, configure alerts, visualize metrics, and integrate Prometheus with Grafana for observability. Feel free to adjust the details based on your interview requirements!

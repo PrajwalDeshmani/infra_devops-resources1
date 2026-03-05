@@ -1,0 +1,570 @@
+Absolutely! Below are **15 Kubernetes interview tasks** that could be asked to candidates, including **detailed implementation files** for each task. These tasks cover various topics such as pod management, deployments, services, and more advanced concepts like volumes, secrets, and scaling.
+
+---
+
+### **1. Basic Pod Deployment**
+
+**Task**: Create a simple Kubernetes Pod that runs an Nginx container.
+
+**nginx-pod.yaml**:
+```yaml
+apiVersion: v1
+kind: Pod
+metadata:
+  name: nginx-pod
+spec:
+  containers:
+    - name: nginx
+      image: nginx:latest
+      ports:
+        - containerPort: 80
+```
+
+**Apply the Pod**:
+```bash
+kubectl apply -f nginx-pod.yaml
+```
+
+---
+
+### **2. Kubernetes Deployment**
+
+**Task**: Create a Kubernetes Deployment to manage Nginx replicas (3 replicas).
+
+**nginx-deployment.yaml**:
+```yaml
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: nginx-deployment
+spec:
+  replicas: 3
+  selector:
+    matchLabels:
+      app: nginx
+  template:
+    metadata:
+      labels:
+        app: nginx
+    spec:
+      containers:
+        - name: nginx
+          image: nginx:latest
+          ports:
+            - containerPort: 80
+```
+
+**Apply the Deployment**:
+```bash
+kubectl apply -f nginx-deployment.yaml
+```
+
+---
+
+### **3. Kubernetes Service for Load Balancing**
+
+**Task**: Expose the Nginx Deployment via a Service to provide load balancing.
+
+**nginx-service.yaml**:
+```yaml
+apiVersion: v1
+kind: Service
+metadata:
+  name: nginx-service
+spec:
+  selector:
+    app: nginx
+  ports:
+    - protocol: TCP
+      port: 80
+      targetPort: 80
+  type: LoadBalancer
+```
+
+**Apply the Service**:
+```bash
+kubectl apply -f nginx-service.yaml
+```
+
+---
+
+### **4. Kubernetes Pod with Resource Requests and Limits**
+
+**Task**: Define a pod with CPU and memory resource requests and limits.
+
+**nginx-resource-pod.yaml**:
+```yaml
+apiVersion: v1
+kind: Pod
+metadata:
+  name: nginx-resource-pod
+spec:
+  containers:
+    - name: nginx
+      image: nginx:latest
+      resources:
+        requests:
+          memory: "64Mi"
+          cpu: "250m"
+        limits:
+          memory: "128Mi"
+          cpu: "500m"
+      ports:
+        - containerPort: 80
+```
+
+**Apply the Pod**:
+```bash
+kubectl apply -f nginx-resource-pod.yaml
+```
+
+---
+
+### **5. Kubernetes ConfigMap**
+
+**Task**: Create a ConfigMap for a custom Nginx configuration.
+
+**nginx-configmap.yaml**:
+```yaml
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: nginx-config
+data:
+  nginx.conf: |
+    server {
+      listen 80;
+      location / {
+        return 200 'Hello from Kubernetes!';
+      }
+    }
+```
+
+**nginx-deployment-with-configmap.yaml**:
+```yaml
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: nginx-with-configmap
+spec:
+  replicas: 2
+  selector:
+    matchLabels:
+      app: nginx
+  template:
+    metadata:
+      labels:
+        app: nginx
+    spec:
+      containers:
+        - name: nginx
+          image: nginx:latest
+          volumeMounts:
+            - name: config-volume
+              mountPath: /etc/nginx/nginx.conf
+              subPath: nginx.conf
+          ports:
+            - containerPort: 80
+      volumes:
+        - name: config-volume
+          configMap:
+            name: nginx-config
+```
+
+**Apply the ConfigMap and Deployment**:
+```bash
+kubectl apply -f nginx-configmap.yaml
+kubectl apply -f nginx-deployment-with-configmap.yaml
+```
+
+---
+
+### **6. Kubernetes Secret**
+
+**Task**: Create a Kubernetes Secret to store sensitive data like database credentials.
+
+**mysql-secret.yaml**:
+```yaml
+apiVersion: v1
+kind: Secret
+metadata:
+  name: mysql-secret
+type: Opaque
+data:
+  username: bXlzdXItYWRtaW4=  # base64 of "mysql-admin"
+  password: cGFzc3dvcmQ=  # base64 of "password"
+```
+
+**Apply the Secret**:
+```bash
+kubectl apply -f mysql-secret.yaml
+```
+
+**Access Secret in Pod**:
+```yaml
+apiVersion: v1
+kind: Pod
+metadata:
+  name: mysql-pod
+spec:
+  containers:
+    - name: mysql
+      image: mysql:5.7
+      env:
+        - name: MYSQL_USER
+          valueFrom:
+            secretKeyRef:
+              name: mysql-secret
+              key: username
+        - name: MYSQL_PASSWORD
+          valueFrom:
+            secretKeyRef:
+              name: mysql-secret
+              key: password
+```
+
+---
+
+### **7. Kubernetes Persistent Volume (PV) and Persistent Volume Claim (PVC)**
+
+**Task**: Set up a Persistent Volume and Persistent Volume Claim.
+
+**pv.yaml**:
+```yaml
+apiVersion: v1
+kind: PersistentVolume
+metadata:
+  name: nginx-pv
+spec:
+  capacity:
+    storage: 1Gi
+  accessModes:
+    - ReadWriteOnce
+  hostPath:
+    path: "/tmp/data"
+```
+
+**pvc.yaml**:
+```yaml
+apiVersion: v1
+kind: PersistentVolumeClaim
+metadata:
+  name: nginx-pvc
+spec:
+  accessModes:
+    - ReadWriteOnce
+  resources:
+    requests:
+      storage: 1Gi
+```
+
+**Pod with PVC**:
+```yaml
+apiVersion: v1
+kind: Pod
+metadata:
+  name: nginx-pod-with-pvc
+spec:
+  containers:
+    - name: nginx
+      image: nginx:latest
+      volumeMounts:
+        - mountPath: /usr/share/nginx/html
+          name: nginx-storage
+  volumes:
+    - name: nginx-storage
+      persistentVolumeClaim:
+        claimName: nginx-pvc
+```
+
+**Apply PV, PVC, and Pod**:
+```bash
+kubectl apply -f pv.yaml
+kubectl apply -f pvc.yaml
+kubectl apply -f nginx-pod-with-pvc.yaml
+```
+
+---
+
+### **8. Kubernetes Horizontal Pod Autoscaler**
+
+**Task**: Create an autoscaler that scales the number of replicas based on CPU utilization.
+
+**autoscaler.yaml**:
+```yaml
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: nginx-deployment
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      app: nginx
+  template:
+    metadata:
+      labels:
+        app: nginx
+    spec:
+      containers:
+        - name: nginx
+          image: nginx:latest
+          ports:
+            - containerPort: 80
+
+---
+
+apiVersion: autoscaling/v2
+kind: HorizontalPodAutoscaler
+metadata:
+  name: nginx-hpa
+spec:
+  scaleTargetRef:
+    apiVersion: apps/v1
+    kind: Deployment
+    name: nginx-deployment
+  minReplicas: 1
+  maxReplicas: 5
+  metrics:
+    - type: Resource
+      resource:
+        name: cpu
+        target:
+          type: Utilization
+          averageUtilization: 50
+```
+
+**Apply the Deployment and HPA**:
+```bash
+kubectl apply -f autoscaler.yaml
+```
+
+---
+
+### **9. Kubernetes Ingress**
+
+**Task**: Set up an Ingress resource to route traffic to multiple services.
+
+**nginx-ingress.yaml**:
+```yaml
+apiVersion: networking.k8s.io/v1
+kind: Ingress
+metadata:
+  name: nginx-ingress
+  annotations:
+    nginx.ingress.kubernetes.io/rewrite-target: /
+spec:
+  rules:
+    - host: nginx.example.com
+      http:
+        paths:
+          - path: /
+            pathType: Prefix
+            backend:
+              service:
+                name: nginx-service
+                port:
+                  number: 80
+```
+
+**Apply the Ingress**:
+```bash
+kubectl apply -f nginx-ingress.yaml
+```
+
+---
+
+### **10. Kubernetes StatefulSet**
+
+**Task**: Set up a StatefulSet for a Stateful application (e.g., MySQL).
+
+**mysql-statefulset.yaml**:
+```yaml
+apiVersion: apps/v1
+kind: StatefulSet
+metadata:
+  name: mysql
+spec:
+  serviceName: "mysql"
+  replicas: 3
+  selector:
+    matchLabels:
+      app: mysql
+  template:
+    metadata:
+      labels:
+        app: mysql
+    spec:
+      containers:
+        - name: mysql
+          image: mysql:5.7
+          env:
+            - name: MYSQL_ROOT_PASSWORD
+              value: password
+          volumeMounts:
+            - name: mysql-data
+              mountPath: /var/lib/mysql
+  volumeClaimTemplates:
+    - metadata:
+        name: mysql-data
+      spec:
+        accessModes: ["ReadWriteOnce"]
+        resources:
+          requests:
+            storage: 1Gi
+```
+
+**Apply the StatefulSet**:
+```bash
+kubectl apply -f mysql-statefulset.yaml
+```
+
+---
+
+### **11. Kubernetes CronJob**
+
+**Task**: Create a CronJob that runs every minute.
+
+**cronjob.yaml**:
+```yaml
+apiVersion: batch/v1
+kind: CronJob
+metadata:
+  name: echo-cronjob
+spec:
+  schedule: "*/1 * * * *"
+  jobTemplate:
+    spec:
+      template:
+        spec:
+          containers:
+            - name: echo
+              image: busybox
+              command:
+                - /bin/sh
+                - -c
+                - "echo Hello, Kubernetes CronJob!"
+          restartPolicy: OnFailure
+```
+
+**Apply the CronJob**:
+```bash
+kubectl apply -f cronjob.yaml
+```
+
+---
+
+### **12. Kubernetes NetworkPolicy**
+
+**Task**: Restrict traffic between Pods using a NetworkPolicy.
+
+**network-policy.yaml**:
+```yaml
+apiVersion: networking.k8s.io/v1
+kind: NetworkPolicy
+metadata:
+  name: allow-only-from-web
+spec:
+  podSelector:
+    matchLabels:
+      app: backend
+  ingress:
+    - from:
+        - podSelector:
+            matchLabels:
+              app: web
+      ports:
+        - protocol: TCP
+          port: 80
+```
+
+**Apply the NetworkPolicy**:
+```bash
+kubectl apply -f network-policy.yaml
+```
+
+---
+
+### **13. Kubernetes RBAC (Role-Based Access Control)**
+
+**Task**: Create a Kubernetes Role and RoleBinding to allow a user to view pods.
+
+**role.yaml**:
+```yaml
+apiVersion: rbac.authorization.k8s.io/v1
+kind: Role
+metadata:
+  namespace: default
+  name: pod-reader
+rules:
+  - apiGroups: [""]
+    resources: ["pods"]
+    verbs: ["get", "list"]
+```
+
+**rolebinding.yaml**:
+```yaml
+apiVersion: rbac.authorization.k8s.io/v1
+kind: RoleBinding
+metadata:
+  name: pod-reader-binding
+  namespace: default
+subjects:
+  - kind: User
+    name: jane
+    apiGroup: rbac.authorization.k8s.io
+roleRef:
+  kind: Role
+  name: pod-reader
+  apiGroup: rbac.authorization.k8s.io
+```
+
+**Apply the Role and RoleBinding**:
+```bash
+kubectl apply -f role.yaml
+kubectl apply -f rolebinding.yaml
+```
+
+---
+
+### **14. Kubernetes Cluster Autoscaler**
+
+**Task**: Enable autoscaling of nodes in a Kubernetes cluster using the Cluster Autoscaler.
+
+**Steps**:
+1. Ensure that your cloud provider supports Cluster Autoscaler (e.g., AWS, GCP).
+2. Install the Cluster Autoscaler using Helm or YAML files provided by Kubernetes documentation.
+
+---
+
+### **15. Kubernetes Pod Affinity/Anti-Affinity**
+
+**Task**: Define pod affinity rules to schedule pods on nodes with specific labels.
+
+**pod-affinity.yaml**:
+```yaml
+apiVersion: v1
+kind: Pod
+metadata:
+  name: pod-with-affinity
+spec:
+  affinity:
+    podAffinity:
+      requiredDuringSchedulingIgnoredDuringExecution:
+        - labelSelector:
+            matchLabels:
+              app: backend
+          topologyKey: "kubernetes.io/hostname"
+  containers:
+    - name: nginx
+      image: nginx
+```
+
+**Apply the Pod**:
+```bash
+kubectl apply -f pod-affinity.yaml
+```
+
+---
+
+These **15 Kubernetes interview-related tasks** cover a wide array of concepts and use cases that interviewers can ask a candidate. They include basic tasks (creating Pods and Deployments) as well as more advanced concepts like **StatefulSets**, **NetworkPolicies**, **RBAC**, **Autoscaling**, and **Affinity/Anti-Affinity**.
